@@ -112,6 +112,31 @@ pub fn worktree_add(repo: &Path, dest: &Path, branch: &str) -> Result<()> {
     Ok(())
 }
 
+/// Create a worktree at `dest` with a detached HEAD — no branch is created.
+/// The checkout point is the same base `worktree_add` uses for new branches:
+/// the default remote's HEAD after a fetch, falling back to local HEAD when
+/// the repo has no remote or the fetch fails (offline).
+pub fn worktree_add_detached(repo: &Path, dest: &Path) -> Result<()> {
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let dest_str = dest.to_string_lossy().to_string();
+    if let Some(start) = fresh_remote_start(repo) {
+        run_with(
+            &["worktree", "add", "--detach", &dest_str, &start],
+            Some(repo),
+            GIT_LONG_TIMEOUT,
+        )?;
+    } else {
+        run_with(
+            &["worktree", "add", "--detach", &dest_str],
+            Some(repo),
+            GIT_LONG_TIMEOUT,
+        )?;
+    }
+    Ok(())
+}
+
 /// Fetch the default remote and return its HEAD branch as a start point for
 /// new branches (e.g. `origin/main`). `None` means "use local HEAD": no
 /// remote configured, fetch failed (offline), or the remote HEAD can't be

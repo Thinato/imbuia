@@ -62,8 +62,8 @@ pub const COMMANDS: &[CmdSpec] = &[
     },
     CmdSpec {
         names: &["worktree", "wt"],
-        usage: ":worktree [branch]",
-        description: "Create a worktree for <branch> in the selected project.",
+        usage: ":worktree [name] [--detach]",
+        description: "Create a worktree in the selected project; --detach checks out a detached HEAD instead of creating branch <name>.",
         handler: cmd_worktree,
     },
     CmdSpec {
@@ -269,17 +269,30 @@ pub(crate) fn cmd_worktree(state: &mut AppState, args: &[&str], cmds: &mut Comma
     let p = &state.projects[project_idx];
     let project_name = p.name.clone();
     let repo_path = p.repo_path.clone();
-    if let Some(branch) = args.first() {
-        state.pending_op = Some(format!("Creating worktree '{branch}'…"));
+    // `--detach`/`-d` anywhere in the args: create the worktree on a detached
+    // HEAD instead of a new branch (the deterministic fallback for terminals
+    // that can't report Shift+Enter in the popup).
+    let detach = args.iter().any(|a| *a == "--detach" || *a == "-d");
+    let name = args.iter().find(|a| !a.starts_with('-'));
+    if let Some(name) = name {
+        let create_branch = !detach;
+        state.pending_op = Some(if create_branch {
+            format!("Creating worktree '{name}'…")
+        } else {
+            format!("Creating worktree '{name}' (detached)…")
+        });
         cmds.push(Command::AddWorktree {
             project_idx,
             repo_path,
-            branch: (*branch).to_string(),
+            name: (*name).to_string(),
+            create_branch,
         });
+    } else if detach {
+        state.command_status = Some("usage: :worktree <name> --detach".into());
     } else {
         state.popup = Some(InputPopup {
             title: format!("New worktree (project: {project_name})"),
-            prompt: "branch".into(),
+            prompt: "name".into(),
             buffer: String::new(),
             action: PopupAction::NewWorktree { project_idx },
         });

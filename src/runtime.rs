@@ -497,10 +497,12 @@ fn execute(
         Command::AddWorktree {
             project_idx,
             repo_path,
-            branch,
+            name,
+            create_branch,
         } => {
             if let Some(client) = project_client(state, supervisors, project_idx, action_tx)
-                && let Err(e) = client.request_add_worktree(project_idx, repo_path, branch)
+                && let Err(e) =
+                    client.request_add_worktree(project_idx, repo_path, name, create_branch)
             {
                 let _ = action_tx.try_send(Action::OperationFailed(format!("worktree: {e}")));
             }

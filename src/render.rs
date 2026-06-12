@@ -682,10 +682,12 @@ fn render_input_popup(
     popup: &crate::app::InputPopup,
     theme: &Theme,
 ) {
+    const FOOTER: &str = " Enter: new branch · Shift+Enter: detached · Esc: cancel";
     let width = (popup
         .title
         .len()
         .max(popup.prompt.len() + popup.buffer.len() + 4)
+        .max(FOOTER.chars().count())
         + 6)
     .clamp(40, area.width.saturating_sub(4) as usize) as u16;
     let height: u16 = 5; // borders + title + 1 input row + footer
@@ -715,10 +717,7 @@ fn render_input_popup(
         ),
         Span::styled(popup.buffer.as_str(), Style::default().fg(theme.fg)),
     ]);
-    let footer = Line::from(Span::styled(
-        " Enter to confirm · Esc to cancel",
-        Style::default().fg(theme.fg_dim),
-    ));
+    let footer = Line::from(Span::styled(FOOTER, Style::default().fg(theme.fg_dim)));
     frame.render_widget(
         Paragraph::new(vec![input_line, Line::from(""), footer])
             .style(Style::default().bg(theme.bg)),

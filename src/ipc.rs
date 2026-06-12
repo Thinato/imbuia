@@ -14,8 +14,10 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Bumped to 2 when the frame layout gained the 1-byte codec tag (see
-/// `write_frame_async`). The handshake refuses version mismatches.
-pub const PROTOCOL_VERSION: u32 = 2;
+/// `write_frame_async`); to 3 when `OpRequest::WorktreeAdd` gained
+/// `create_branch` (and `branch` became `name`). The handshake refuses
+/// version mismatches.
+pub const PROTOCOL_VERSION: u32 = 3;
 const MAX_FRAME: u32 = 8 * 1024 * 1024;
 
 /// Per-frame codec tag (the byte after the length prefix).
@@ -112,7 +114,14 @@ pub enum OpRequest {
     /// `git worktree list --porcelain`.
     ListWorktrees { repo_path: PathBuf },
     /// `git worktree add` (computing the destination path supervisor-side).
-    WorktreeAdd { repo_path: PathBuf, branch: String },
+    /// `name` is the worktree directory name; with `create_branch` it's also
+    /// the new branch's name, otherwise the worktree checks out a detached
+    /// HEAD at the base point and no branch is created.
+    WorktreeAdd {
+        repo_path: PathBuf,
+        name: String,
+        create_branch: bool,
+    },
     /// `git worktree remove --force` + optional `git branch -D`.
     WorktreeRemove {
         repo_path: PathBuf,
@@ -517,7 +526,8 @@ mod tests {
                 request_id: 13,
                 req: OpRequest::WorktreeAdd {
                     repo_path: PathBuf::from("/repo"),
-                    branch: "feat".into(),
+                    name: "feat".into(),
+                    create_branch: false,
                 },
             },
             ClientMsg::Op {

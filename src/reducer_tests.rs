@@ -1486,8 +1486,90 @@ fn worktree_command_with_arg_emits_add_worktree() {
     let cmds = submit_command(&mut s, "worktree feat-x");
     assert!(matches!(
         cmds.as_slice(),
-        [Command::AddWorktree { project_idx: 0, branch, .. }] if branch == "feat-x"
+        [Command::AddWorktree { project_idx: 0, name, create_branch: true, .. }] if name == "feat-x"
     ));
+}
+
+#[test]
+fn worktree_command_with_detach_flag_skips_branch_creation() {
+    let mut s = mk_state_with_mock_projects();
+    s.sidebar_selection = Some((0, None));
+    let cmds = submit_command(&mut s, "worktree feat-x --detach");
+    assert!(matches!(
+        cmds.as_slice(),
+        [Command::AddWorktree { project_idx: 0, name, create_branch: false, .. }] if name == "feat-x"
+    ));
+    assert_eq!(
+        s.pending_op.as_deref(),
+        Some("Creating worktree 'feat-x' (detached)…")
+    );
+}
+
+#[test]
+fn worktree_command_short_detach_flag_works_in_any_position() {
+    let mut s = mk_state_with_mock_projects();
+    s.sidebar_selection = Some((0, None));
+    let cmds = submit_command(&mut s, "worktree -d feat-x");
+    assert!(matches!(
+        cmds.as_slice(),
+        [Command::AddWorktree { create_branch: false, name, .. }] if name == "feat-x"
+    ));
+}
+
+#[test]
+fn worktree_command_detach_without_name_sets_usage_status() {
+    let mut s = mk_state_with_mock_projects();
+    s.sidebar_selection = Some((0, None));
+    let cmds = submit_command(&mut s, "worktree --detach");
+    assert!(cmds.is_empty());
+    assert!(s.popup.is_none());
+    assert_eq!(
+        s.command_status.as_deref(),
+        Some("usage: :worktree <name> --detach")
+    );
+}
+
+#[test]
+fn worktree_popup_plain_enter_creates_branch() {
+    let mut s = mk_state_with_mock_projects();
+    s.sidebar_selection = Some((0, None));
+    let _ = submit_command(&mut s, "worktree");
+    assert!(s.popup.is_some());
+    for c in "feat-x".chars() {
+        let _ = reduce(&mut s, Action::Key(plain(c)));
+    }
+    let cmds = reduce(
+        &mut s,
+        Action::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+    );
+    assert!(s.popup.is_none());
+    assert!(matches!(
+        cmds.as_slice(),
+        [Command::AddWorktree { project_idx: 0, name, create_branch: true, .. }] if name == "feat-x"
+    ));
+}
+
+#[test]
+fn worktree_popup_shift_enter_creates_detached() {
+    let mut s = mk_state_with_mock_projects();
+    s.sidebar_selection = Some((0, None));
+    let _ = submit_command(&mut s, "worktree");
+    for c in "feat-x".chars() {
+        let _ = reduce(&mut s, Action::Key(plain(c)));
+    }
+    let cmds = reduce(
+        &mut s,
+        Action::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::SHIFT)),
+    );
+    assert!(s.popup.is_none());
+    assert!(matches!(
+        cmds.as_slice(),
+        [Command::AddWorktree { project_idx: 0, name, create_branch: false, .. }] if name == "feat-x"
+    ));
+    assert_eq!(
+        s.pending_op.as_deref(),
+        Some("Creating worktree 'feat-x' (detached)…")
+    );
 }
 
 #[test]

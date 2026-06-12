@@ -1277,14 +1277,19 @@ fn handle_popup_key(state: &mut AppState, k: KeyEvent, cmds: &mut Commands) {
             state.popup = None;
         }
         KeyCode::Enter => {
+            // Shift+Enter (kitty/modifyOtherKeys terminals) creates the
+            // worktree detached — no new branch. Plain Enter on terminals
+            // without an enhanced keyboard protocol is indistinguishable from
+            // Shift+Enter; `:worktree <name> --detach` is the fallback there.
+            let shift = k.modifiers.contains(KeyModifiers::SHIFT);
             let popup = state.popup.take().unwrap();
-            dispatch_popup(state, popup, cmds);
+            dispatch_popup(state, popup, shift, cmds);
         }
         _ => {}
     }
 }
 
-fn dispatch_popup(state: &mut AppState, popup: InputPopup, cmds: &mut Commands) {
+fn dispatch_popup(state: &mut AppState, popup: InputPopup, shift: bool, cmds: &mut Commands) {
     let arg = popup.buffer.trim().to_string();
     if arg.is_empty() {
         return;
@@ -1292,11 +1297,17 @@ fn dispatch_popup(state: &mut AppState, popup: InputPopup, cmds: &mut Commands) 
     match popup.action {
         PopupAction::NewWorktree { project_idx } => {
             if let Some(p) = state.projects.get(project_idx) {
-                state.pending_op = Some(format!("Creating worktree '{arg}'…"));
+                let create_branch = !shift;
+                state.pending_op = Some(if create_branch {
+                    format!("Creating worktree '{arg}'…")
+                } else {
+                    format!("Creating worktree '{arg}' (detached)…")
+                });
                 cmds.push(Command::AddWorktree {
                     project_idx,
                     repo_path: p.repo_path.clone(),
-                    branch: arg,
+                    name: arg,
+                    create_branch,
                 });
             }
         }

@@ -791,13 +791,21 @@ fn run_git_op(req: OpRequest) -> OpResult {
                     .collect(),
             ))
         }
-        OpRequest::WorktreeAdd { repo_path, branch } => {
-            let dest = worktree_dest(&repo_path, &branch);
-            git::worktree_add(&repo_path, &dest, &branch).map_err(|e| format!("{e:#}"))?;
-            tracing::info!(repo = %repo_path.display(), %branch, dest = %dest.display(), "worktree added");
+        OpRequest::WorktreeAdd {
+            repo_path,
+            name,
+            create_branch,
+        } => {
+            let dest = worktree_dest(&repo_path, &name);
+            if create_branch {
+                git::worktree_add(&repo_path, &dest, &name).map_err(|e| format!("{e:#}"))?;
+            } else {
+                git::worktree_add_detached(&repo_path, &dest).map_err(|e| format!("{e:#}"))?;
+            }
+            tracing::info!(repo = %repo_path.display(), %name, create_branch, dest = %dest.display(), "worktree added");
             Ok(OpOk::WorktreeAdded(WorktreeEntry {
                 path: dest,
-                branch: Some(branch),
+                branch: create_branch.then_some(name),
             }))
         }
         OpRequest::WorktreeRemove {

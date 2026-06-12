@@ -493,11 +493,16 @@ impl SupervisorClient {
         &self,
         project_idx: usize,
         repo_path: PathBuf,
-        branch: String,
+        name: String,
+        create_branch: bool,
     ) -> Result<()> {
         self.send_op(
             PendingOp::AddWorktree { project_idx },
-            OpRequest::WorktreeAdd { repo_path, branch },
+            OpRequest::WorktreeAdd {
+                repo_path,
+                name,
+                create_branch,
+            },
         )
     }
 

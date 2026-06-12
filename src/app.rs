@@ -846,11 +846,14 @@ pub enum Command {
         project_idx: usize,
         repo_path: PathBuf,
     },
-    /// Run `git worktree add` and persist. Asynchronous.
+    /// Run `git worktree add` and persist. Asynchronous. `name` is the
+    /// worktree directory name; with `create_branch` it also names the new
+    /// branch, otherwise the worktree gets a detached HEAD and no branch.
     AddWorktree {
         project_idx: usize,
         repo_path: PathBuf,
-        branch: String,
+        name: String,
+        create_branch: bool,
     },
     /// Run `git worktree remove --force` and `git branch -D`. Asynchronous.
     /// On success the runtime emits `Action::WorktreeRemoved`.
